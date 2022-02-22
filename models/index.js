@@ -1,75 +1,61 @@
-const { Model, DataTypes } = require('sequelize');
+const User = require('./User');
+const Post = require('./Post');
+const Vote = require('./Vote');
+const Comment = require('./Comment');
 
-const sequelize = require('../config/connection');
+User.hasMany(Post, {
+    foreignKey: 'user_id'
+});
 
-class Post extends Model {
-    static upvote(body, models) {
-        return models.Vote.create({
-            user_id: body.user_id,
-            post_id: body.post_id
-        }).then(() => {
-            return Post.findOne({
-                where: {
-                    id: body.post_id
-                },
-                attributes: [
-                    'id',
-                    'post_url',
-                    'title',
-                    'created_at',
-                    [
-                        sequelize.literal('(SELECT COUNT (*) FROM vote WHERE post.id = vote.post_id)'),
-                        'vote_count'
-                    ]
-                ],
-                include: [
-                    {
-                        model: models.Comment,
-                        attributes: ['id', 'comment_text', 'post_id', 'user_id', 'created_at'],
-                        include: {
-                            model: models.User,
-                            attributes: ['username']
-                        }
-                    }
-                ]
-            });
-        });
-    }
-}
+Post.belongsTo(User, {
+    foreignKey: 'user_id',
+    onDelete: 'CASCADE'
+});
 
-Post.init(
-    {
-        id: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            primaryKey: true,
-            autoIncrement: true
-        },
-        title: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-        post_url: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            validate: {
-                isURL: true
-            }
-        },
-        user_id: {
-            type: DataTypes.INTEGER,
-            references: {
-                model: 'user',
-                key: 'id'
-            }
-        }
-    },
-    {
-        sequelize,
-        freezeTableName: true,
-        underscored: true,
-        modelName: 'post'
-    }
-);
+User.belongsToMany(Post, {
+    through: Vote,
+    as: 'voted_posts',
+    foreignKey: 'user_id',
+    onDelete: 'CASCADE'
+});
 
-module.exports = Post;
+Post.belongsToMany(User, {
+    through: Vote,
+    as: 'voted_posts',
+    foreignKey: 'post_id',
+    onDelete: 'CASCADE'
+})
+
+Vote.belongsTo(User, {
+    foriegnKey: 'user_id'
+});
+
+Vote.belongsTo(Post, {
+    foreignKey: 'post_id'
+});
+
+User.hasMany(Vote, {
+    foreignKey: 'user_id'
+});
+
+Post.hasMany(Vote, {
+    foreignKey: 'post_id'
+});
+
+Comment.belongsTo(User, {
+    foreignKey: 'user_id'
+});
+
+Comment.belongsTo(Post, {
+    foreignKey: 'post_id'
+});
+
+User.hasMany(Comment, {
+    foreignKey: 'user_id'
+});
+
+Post.hasMany(Comment, {
+    foreignKey: 'post_id'
+});
+
+module.exports = { User, Post, Vote, Comment };
